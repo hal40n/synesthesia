@@ -8,19 +8,7 @@ class ResearchMode:
         self.prompt = None
         self.client = None
 
-    def start(self):
-        self.prompt = load_prompt(Config.PROMPT_RESEARCH)
-        self.client = LLMClient(self.prompt)
-
-        print("[research] mode initialized")
-        print(f"[research] prompt loaded ({Config.PROMPT_RESEARCH})")
-
-        llm_input = LLMInput(
-            key="C major",
-            pitch_classes=["C", "D", "E", "F", "G", "A", "B"],
-            frequencies=[261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
-            dynamics="medium",
-            density="normal"
-        )
-        llm_output = self.client.interpret(llm_input)
-        print(f"[research] llm output: {llm_output}")
+    def start(self, session: str):
+        if session.seed is None:
+            print("[research] warning: seed not set")
+        print(f"[research] key={session.key}, seed={session.seed}")
