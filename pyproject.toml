@@ -7,6 +7,9 @@ name = "syn"
 version = "0.1.0"
 description = "syn - synesthesia engine"
 requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv",
+]
 
 [project.scripts]
 syn = "syn.cli:main"
