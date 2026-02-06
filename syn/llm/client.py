@@ -3,8 +3,9 @@ import os
 
 class LLMClient:
     
-    def __init__(self, prompt: str):
+    def __init__(self, prompt: str, temperature: float = 0.0):
         self.prompt = prompt
+        self.temperature = temperature
         self.provider = os.getenv("SYN_LLM_PROVIDER", "local")
         self.model = os.getenv("SYN_LLM_MODEL", "placeholder")
 
@@ -15,12 +16,11 @@ class LLMClient:
             raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
 
     def _local_dummy(self, llm_input: LLMInput) -> LLMOutput:
-        return LLMOutput(
+        output = LLMOutput(
             base_hue=0.0,
             hue_offset=0.0,
             saturation=0.5,
             brightness=0.5
         )
-
         validate_output(output)
         return output
