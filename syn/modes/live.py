@@ -2,7 +2,17 @@ from syn.core.prompt_loader import load_prompt
 from syn.config import Config
 from syn.llm.client import LLMClient
 from syn.llm.schema import LLMInput
+from syn.log.live import LiveLogger
 
+logger = LiveLogger()
+logger.write({
+    "timestamp": logger.timestamp,
+    "mode": "live",
+    "session": session.session_name,
+    "key": session.key,
+    "temperature": Config.LLM_TEMPERATURE_LIVE,
+    "llm_output": output.__dict__,
+})
 
 class LiveMode:
     def __init__(self):
