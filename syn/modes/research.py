@@ -2,6 +2,7 @@ from syn.core.prompt_loader import load_prompt
 from syn.config import Config
 from syn.llm.client import LLMClient
 from syn.llm.schema import LLMInput
+from syn.log.research import ResearchLogger
 
 
 class ResearchMode:
@@ -40,3 +41,15 @@ class ResearchMode:
 
         output = self.client.interpret(llm_input)
         print(f"[research] LLM output: {output}")
+
+        # ---- logging ----
+        logger = ResearchLogger()
+        logger.write({
+            "timestamp": logger.timestamp,
+            "mode": "research",
+            "key": session.key,
+            "seed": session.seed,
+            "temperature": Config.LLM_TEMPERATURE_RESEARCH,
+            "llm_input": llm_input.__dict__,
+            "llm_output": output.__dict__,
+        })

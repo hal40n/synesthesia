@@ -7,7 +7,7 @@ from syn.config import Config
 class LiveLogger(BaseLogger):
     def __init__(self):
         super().__init__()
-        self.log_dir = Path(Config.SYN_LOG_DIR_LIVE)
+        self.log_dir = Config.SYN_LOG_LIVE_DIR
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
     def write(self, data: dict):

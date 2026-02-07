@@ -7,7 +7,7 @@ from syn.config import Config
 class ResearchLogger(BaseLogger):
     def __init__(self):
         super().__init__()
-        self.log_dir = Path(Config.SYN_LOG_DIR_RESEARCH)
+        self.log_dir = Config.SYN_LOG_RESEARCH_DIR
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
     def write(self, data: dict):

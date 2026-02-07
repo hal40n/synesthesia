@@ -3,7 +3,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+PROJECT_ROOT = Path(__file__).parent.parent
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 def _required_env(key: str) -> str:
     value = os.getenv(key)
@@ -18,12 +20,17 @@ def _get_env_float(key: str) -> float:
     except ValueError:
         raise ValueError(f"Environment variable {key} must be a number")
 
+def _resolve_path(key: str) -> Path:
+    """Resolve a path relative to project root."""
+    value = _required_env(key)
+    return PROJECT_ROOT / value.lstrip("/")
+
 class Config:
     PROMPT_RESEARCH = _required_env("PROMPT_RESEARCH")
     PROMPT_LIVE = _required_env("PROMPT_LIVE")
-    SYN_LOG_DIR = _required_env("SYN_LOG_DIR")
-    SYN_LOG_RESEARCH_DIR = _required_env("SYN_LOG_RESEARCH_DIR")
-    SYN_LOG_LIVE_DIR = _required_env("SYN_LOG_LIVE_DIR")
+    SYN_LOG_DIR = _resolve_path("SYN_LOG_DIR")
+    SYN_LOG_RESEARCH_DIR = _resolve_path("SYN_LOG_RESEARCH_DIR")
+    SYN_LOG_LIVE_DIR = _resolve_path("SYN_LOG_LIVE_DIR")
     SYN_LLM_PROVIDER = _required_env("SYN_LLM_PROVIDER")
     SYN_LLM_MODEL = _required_env("SYN_LLM_MODEL")
     LLM_TEMPERATURE_RESEARCH = _get_env_float("PROMPT_RESEARCH_TEMPERATURE")

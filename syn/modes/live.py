@@ -4,15 +4,6 @@ from syn.llm.client import LLMClient
 from syn.llm.schema import LLMInput
 from syn.log.live import LiveLogger
 
-logger = LiveLogger()
-logger.write({
-    "timestamp": logger.timestamp,
-    "mode": "live",
-    "session": session.session_name,
-    "key": session.key,
-    "temperature": Config.LLM_TEMPERATURE_LIVE,
-    "llm_output": output.__dict__,
-})
 
 class LiveMode:
     def __init__(self):
@@ -49,3 +40,14 @@ class LiveMode:
 
         output = self.client.interpret(llm_input)
         print(f"[live] LLM output: {output}")
+
+        # ---- logging ----
+        logger = LiveLogger()
+        logger.write({
+            "timestamp": logger.timestamp,
+            "mode": "live",
+            "session": session.session_name,
+            "key": session.key,
+            "temperature": Config.LLM_TEMPERATURE_LIVE,
+            "llm_output": output.__dict__,
+        })
