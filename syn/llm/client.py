@@ -13,12 +13,24 @@ class LLMClient:
         self.model = os.getenv("SYN_LLM_MODEL", "allura-forge_llama-3.3-8b-instruct")
 
     def interpret(self, llm_input: LLMInput) -> LLMOutput:
-        if self.provider == "lmstudio":
-            return self._lmstudio_interpret(llm_input)
-        elif self.provider == "ollama":
-            return self._ollama_interpret(llm_input)
-        else:
-            raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
+        last_error = None
+
+        for attempt in range(1, 2):
+            try:
+                if self.provider == "lmstudio":
+                    return self._lmstudio_interpret(llm_input)
+                elif self.provider == "ollama":
+                    return self._ollama_interpret(llm_input)
+                else:
+                    raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
+            except Exception as e:
+                last_error = e
+                if attempt == 1:
+                    continue # retry
+                else:
+                    raise last_error
+
+        raise last_error
 
     def _lmstudio_interpret(self, llm_input: LLMInput) -> LLMOutput:
         url = f"{self.base_url}/v1/chat/completions"
