@@ -4,3 +4,4 @@ syn/__pycache__
 syn/modes/__pycache__
 *.egg-info
 .env
+logs/
