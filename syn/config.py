@@ -37,5 +37,11 @@ class Config:
     # "static" preserves the historical fixed-triad behavior; set
     # SYN_INPUT_SOURCE=audio to observe a capture device instead.
     SYN_INPUT_SOURCE = os.getenv("SYN_INPUT_SOURCE", "static")
+    # Capture device: name substring, index, or unset for the system
+    # default input (audio interface for instruments, BlackHole for
+    # on-Mac sources). Resolved and printed at startup.
+    SYN_AUDIO_DEVICE = os.getenv("SYN_AUDIO_DEVICE") or None
+    SYN_AUDIO_SAMPLE_RATE = int(os.getenv("SYN_AUDIO_SAMPLE_RATE", "44100"))
+    SYN_AUDIO_WINDOW_SECONDS = float(os.getenv("SYN_AUDIO_WINDOW_SECONDS", "2.0"))
     LLM_TEMPERATURE_RESEARCH = _get_env_float("PROMPT_RESEARCH_TEMPERATURE")
     LLM_TEMPERATURE_LIVE = _get_env_float("PROMPT_LIVE_TEMPERATURE")        
