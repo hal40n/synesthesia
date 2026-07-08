@@ -71,6 +71,14 @@ class TestDominantFrequencies:
     def test_silence_has_no_frequencies(self):
         assert dominant_frequencies(np.zeros(SR, dtype=np.float32), SR) == []
 
+    def test_dc_offset_does_not_mask_peaks(self):
+        """A strong DC bias (common on line inputs) sits outside the
+        analysis band and must not blank the in-band peaks."""
+        biased = c_major_triad() + 0.5
+        found = dominant_frequencies(biased, SR, top_n=3)
+        assert len(found) == 3
+        assert found[0] == pytest.approx(261.63, abs=2.0)
+
 
 class TestKeyEstimate:
     def test_major_triad(self):

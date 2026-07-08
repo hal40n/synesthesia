@@ -51,28 +51,33 @@ def dynamics_from_rms(value: float) -> str:
 
 
 def _spectrum(samples: np.ndarray, sample_rate: int):
+    """Band-limited magnitude spectrum: DC and out-of-band bins are
+    dropped here so no downstream threshold can be skewed by them."""
     window = samples * np.hanning(len(samples))
     magnitudes = np.abs(np.fft.rfft(window))
     freqs = np.fft.rfftfreq(len(samples), 1.0 / sample_rate)
-    return magnitudes, freqs
-
-
-def chroma_vector(samples: np.ndarray, sample_rate: int) -> np.ndarray:
-    """12-dim energy distribution over pitch classes (octave-folded)."""
-    magnitudes, freqs = _spectrum(samples, sample_rate)
     band = (freqs >= FREQ_MIN) & (freqs <= FREQ_MAX)
+    return magnitudes[band], freqs[band]
+
+
+def _chroma_from_spectrum(magnitudes: np.ndarray, freqs: np.ndarray) -> np.ndarray:
     chroma = np.zeros(12)
-    if not np.any(band):
+    if len(freqs) == 0:
         return chroma
 
-    midi = 69.0 + 12.0 * np.log2(freqs[band] / 440.0)
+    midi = 69.0 + 12.0 * np.log2(freqs / 440.0)
     classes = np.mod(np.round(midi).astype(int), 12)
-    np.add.at(chroma, classes, magnitudes[band])
+    np.add.at(chroma, classes, magnitudes)
 
     total = chroma.sum()
     if total <= 1e-9:
         return np.zeros(12)
     return chroma / total
+
+
+def chroma_vector(samples: np.ndarray, sample_rate: int) -> np.ndarray:
+    """12-dim energy distribution over pitch classes (octave-folded)."""
+    return _chroma_from_spectrum(*_spectrum(samples, sample_rate))
 
 
 def pitch_classes_from_chroma(chroma: np.ndarray, top_n: int = 4) -> list[str]:
@@ -87,26 +92,30 @@ def pitch_classes_from_chroma(chroma: np.ndarray, top_n: int = 4) -> list[str]:
     ]
 
 
-def dominant_frequencies(
-    samples: np.ndarray, sample_rate: int, top_n: int = 3
+def _dominant_from_spectrum(
+    magnitudes: np.ndarray, freqs: np.ndarray, top_n: int = 3
 ) -> list[float]:
-    """Strongest spectral peaks, at least a semitone apart, ascending."""
-    magnitudes, freqs = _spectrum(samples, sample_rate)
-    if magnitudes.max() <= 1e-9:
+    if len(magnitudes) == 0 or magnitudes.max() <= 1e-9:
         return []
 
+    floor = 0.05 * magnitudes.max()  # relative to the in-band maximum
     picked: list[float] = []
     for i in np.argsort(magnitudes)[::-1]:
-        freq = float(freqs[i])
-        if not (FREQ_MIN <= freq <= FREQ_MAX):
-            continue
-        if magnitudes[i] < 0.05 * magnitudes.max():
+        if magnitudes[i] < floor:
             break
+        freq = float(freqs[i])
         if all(abs(freq - p) / p > 0.03 for p in picked):
             picked.append(freq)
         if len(picked) == top_n:
             break
     return sorted(round(f, 1) for f in picked)
+
+
+def dominant_frequencies(
+    samples: np.ndarray, sample_rate: int, top_n: int = 3
+) -> list[float]:
+    """Strongest spectral peaks, at least a semitone apart, ascending."""
+    return _dominant_from_spectrum(*_spectrum(samples, sample_rate), top_n=top_n)
 
 
 def estimate_key(chroma: np.ndarray) -> str | None:
@@ -159,10 +168,11 @@ def analyze(samples: np.ndarray, sample_rate: int) -> AudioFeatures:
             key_estimate=None,
         )
 
-    chroma = chroma_vector(samples, sample_rate)
+    magnitudes, freqs = _spectrum(samples, sample_rate)
+    chroma = _chroma_from_spectrum(magnitudes, freqs)
     return AudioFeatures(
         pitch_classes=pitch_classes_from_chroma(chroma),
-        frequencies=dominant_frequencies(samples, sample_rate),
+        frequencies=_dominant_from_spectrum(magnitudes, freqs),
         dynamics=dynamics_from_rms(level),
         density=density_from_onset_rate(onset_rate(samples, sample_rate)),
         key_estimate=estimate_key(chroma),
