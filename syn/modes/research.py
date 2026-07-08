@@ -27,9 +27,12 @@ class ResearchMode:
         print("[research] mode initialized")
         print(f"[research] temperature={Config.LLM_TEMPERATURE_RESEARCH}")
         print(f"[research] key={session.key}, seed={session.seed}")
-        print(f"[research] input source={Config.SYN_INPUT_SOURCE}")
+        print("[research] input source=static (fixed observation)")
 
-        source = create_input_source(Config.SYN_INPUT_SOURCE, key=session.key)
+        # Research is reproducible by construction: it always observes
+        # the fixed input, regardless of SYN_INPUT_SOURCE. Ephemeral
+        # audio observation belongs to live mode.
+        source = create_input_source("static", key=session.key)
         llm_input = source.read()
 
         output = self.client.interpret(llm_input)

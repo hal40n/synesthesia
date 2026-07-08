@@ -11,6 +11,10 @@ class AudioCapture:
 
     The device is either an audio-interface input (instruments) or a
     loopback device such as BlackHole (sound playing on the Mac).
+
+    The buffer stores the callback's blocks as-is; the lock is only
+    ever held for deque bookkeeping, never for large copies, so the
+    real-time audio callback is never blocked by readers.
     """
 
     def __init__(
@@ -23,7 +27,8 @@ class AudioCapture:
         self.sample_rate = sample_rate
         self.window_seconds = window_seconds
         self._window_samples = int(sample_rate * window_seconds)
-        self._buffer = collections.deque(maxlen=self._window_samples)
+        self._blocks: collections.deque[np.ndarray] = collections.deque()
+        self._total_samples = 0
         self._lock = threading.Lock()
         self._stream = None
 
@@ -37,8 +42,13 @@ class AudioCapture:
     def start(self):
         if self._stream is not None:
             return
+        resolved = self._resolve_device()
+        print(
+            f"[audio] device={'system default' if resolved is None else resolved}, "
+            f"sample_rate={self.sample_rate}"
+        )
         self._stream = sd.InputStream(
-            device=self._resolve_device(),
+            device=resolved,
             channels=1,
             samplerate=self.sample_rate,
             callback=self._on_audio,
@@ -53,17 +63,32 @@ class AudioCapture:
         self._stream = None
 
     def _on_audio(self, indata, frames, time_info, status):
+        if status:
+            print(f"[audio] stream status: {status}")
         mono = indata[:, 0] if indata.ndim > 1 else indata
+        block = mono.astype(np.float32, copy=True)
         with self._lock:
-            self._buffer.extend(mono.copy())
+            self._blocks.append(block)
+            self._total_samples += len(block)
+            # drop whole old blocks while a full window still remains
+            while (
+                self._blocks
+                and self._total_samples - len(self._blocks[0]) >= self._window_samples
+            ):
+                self._total_samples -= len(self._blocks.popleft())
 
-    def _snapshot(self) -> np.ndarray:
+    def _blocks_snapshot(self) -> list[np.ndarray]:
+        # blocks are append-only arrays, so sharing references is safe
         with self._lock:
-            return np.array(self._buffer, dtype=np.float32)
+            return list(self._blocks)
 
     def read_window(self) -> np.ndarray:
         """Latest window, left-padded with silence while filling up."""
-        data = self._snapshot()
+        blocks = self._blocks_snapshot()
+        if not blocks:
+            return np.zeros(self._window_samples, dtype=np.float32)
+
+        data = np.concatenate(blocks)[-self._window_samples :]
         missing = self._window_samples - len(data)
         if missing > 0:
             data = np.concatenate([np.zeros(missing, dtype=np.float32), data])
@@ -71,8 +96,16 @@ class AudioCapture:
 
     def rms_now(self, seconds: float = 0.05) -> float:
         """Instantaneous level of the most recent audio (fast layer)."""
-        data = self._snapshot()
-        recent = data[-max(1, int(self.sample_rate * seconds)) :]
-        if len(recent) == 0:
+        needed = max(1, int(self.sample_rate * seconds))
+        recent: list[np.ndarray] = []
+        collected = 0
+        for block in reversed(self._blocks_snapshot()):
+            recent.append(block)
+            collected += len(block)
+            if collected >= needed:
+                break
+        if collected == 0:
             return 0.0
-        return float(np.sqrt(np.mean(np.square(recent, dtype=np.float64))))
+
+        data = np.concatenate(recent[::-1])[-needed:]
+        return float(np.sqrt(np.mean(np.square(data, dtype=np.float64))))

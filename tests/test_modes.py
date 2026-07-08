@@ -1,4 +1,5 @@
 import json
+import time
 from unittest.mock import patch
 
 import pytest
@@ -49,16 +50,53 @@ class TestResearchMode:
         assert data["llm_output"]["base_hue"] == 120.0
         assert data["temperature"] == Config.LLM_TEMPERATURE_RESEARCH
 
+    def test_input_source_env_cannot_break_reproducibility(
+        self, research_log_dir, valid_output, monkeypatch
+    ):
+        """Research always observes the fixed input, even if the
+        environment selects audio for live sessions."""
+        monkeypatch.setattr(Config, "SYN_INPUT_SOURCE", "audio")
+        session = Session(mode="research", key="C major", seed=7)
+        with patch("syn.modes.research.LLMClient") as MockClient:
+            MockClient.return_value.interpret.return_value = valid_output
+            session.start()
 
-class FakeRenderer:
-    """Stands in for the pygame window: pulls a few frames, then quits."""
+        data = json.loads(
+            next(iter(research_log_dir.glob("*.json"))).read_text(encoding="utf-8")
+        )
+        assert data["llm_input"]["pitch_classes"] == ["C", "E", "G"]
+
+
+class WaitForLogRenderer:
+    """Stands in for the pygame window: pulls frames until the
+    interpretation thread has written a trace (or 3s pass)."""
+
+    poll_dir = None
 
     def __init__(self, **kwargs):
         pass
 
     def run(self, next_state, max_frames=None):
-        for _ in range(3):
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
             next_state()
+            if self.poll_dir is not None and list(self.poll_dir.glob("*.json")):
+                time.sleep(0.05)  # let the thread finish its cycle
+                return
+            time.sleep(0.01)
+
+
+class BriefRenderer:
+    """Pulls frames for a moment, then quits."""
+
+    def __init__(self, **kwargs):
+        pass
+
+    def run(self, next_state, max_frames=None):
+        deadline = time.monotonic() + 0.2
+        while time.monotonic() < deadline:
+            next_state()
+            time.sleep(0.01)
 
 
 class TestLiveMode:
@@ -69,16 +107,16 @@ class TestLiveMode:
 
     def test_start_renders_and_writes_trace_log(self, live_log_dir, valid_output):
         session = Session(mode="live", key="E minor", session_name="night-01")
+        WaitForLogRenderer.poll_dir = live_log_dir
         with (
             patch("syn.modes.live.LLMClient") as MockClient,
-            patch("syn.modes.live.Renderer", FakeRenderer),
+            patch("syn.modes.live.Renderer", WaitForLogRenderer),
         ):
             MockClient.return_value.interpret.return_value = valid_output
             session.start()
 
-        # the first interpretation runs synchronously before the window
-        # opens; the background thread waits a full interval, so exactly
-        # one trace exists after an immediate quit
+        # a static observation cannot change, so the session interprets
+        # it exactly once
         files = list(live_log_dir.glob("*.json"))
         assert len(files) == 1
         data = json.loads(files[0].read_text(encoding="utf-8"))
@@ -92,9 +130,23 @@ class TestLiveMode:
         session = Session(mode="live", key="E minor")
         with (
             patch("syn.modes.live.LLMClient") as MockClient,
-            patch("syn.modes.live.Renderer", FakeRenderer),
+            patch("syn.modes.live.Renderer", BriefRenderer),
         ):
             MockClient.return_value.interpret.side_effect = RuntimeError("LLM down")
             session.start()  # must not raise: presence over crash
 
         assert list(live_log_dir.glob("*.json")) == []
+
+    def test_logging_failure_does_not_kill_interpretation(self, valid_output, monkeypatch, tmp_path):
+        # point the live log dir at a file so LiveLogger.write fails
+        blocker = tmp_path / "not-a-dir"
+        blocker.write_text("x")
+        monkeypatch.setattr(Config, "SYN_LOG_LIVE_DIR", blocker)
+
+        session = Session(mode="live", key="E minor")
+        with (
+            patch("syn.modes.live.LLMClient") as MockClient,
+            patch("syn.modes.live.Renderer", BriefRenderer),
+        ):
+            MockClient.return_value.interpret.return_value = valid_output
+            session.start()  # must not raise even though tracing is broken
