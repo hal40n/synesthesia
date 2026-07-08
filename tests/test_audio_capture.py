@@ -101,3 +101,10 @@ def test_stop_closes_stream(fake_sd):
     capture.start()
     capture.stop()
     assert fake_sd[0].stopped
+
+
+def test_stream_status_is_reported(fake_sd, capsys):
+    capture = AudioCapture(device=None, sample_rate=100, window_seconds=1.0)
+    capture.start()
+    capture._on_audio(np.zeros((10, 1), dtype=np.float32), 10, None, "input overflow")
+    assert "input overflow" in capsys.readouterr().out
