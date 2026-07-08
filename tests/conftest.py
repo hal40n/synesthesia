@@ -19,7 +19,10 @@ import pytest
 
 from syn.llm.schema import LLMOutput
 
+# Single canonical valid output shared by the whole suite.
+VALID_OUTPUT = LLMOutput(base_hue=120.0, hue_offset=10.0, saturation=0.5, brightness=0.6)
+
 
 @pytest.fixture
 def valid_output() -> LLMOutput:
-    return LLMOutput(base_hue=120.0, hue_offset=10.0, saturation=0.5, brightness=0.6)
+    return VALID_OUTPUT

@@ -33,6 +33,13 @@ class TestResearchMode:
             MockClient.return_value.interpret.return_value = valid_output
             session.start()
 
+        # the mode must wire Config settings into the client explicitly
+        client_kwargs = MockClient.call_args.kwargs
+        assert client_kwargs["temperature"] == Config.LLM_TEMPERATURE_RESEARCH
+        assert client_kwargs["provider"] == Config.SYN_LLM_PROVIDER
+        assert client_kwargs["base_url"] == Config.SYN_LLM_BASE_URL
+        assert client_kwargs["model"] == Config.SYN_LLM_MODEL
+
         files = list(research_log_dir.glob("*.json"))
         assert len(files) == 1
         data = json.loads(files[0].read_text(encoding="utf-8"))

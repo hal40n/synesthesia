@@ -16,7 +16,13 @@ class ResearchMode:
 
         # ---- init ----
         self.prompt = load_prompt(Config.PROMPT_RESEARCH)
-        self.client = LLMClient(self.prompt, temperature=Config.LLM_TEMPERATURE_RESEARCH)
+        self.client = LLMClient(
+            self.prompt,
+            temperature=Config.LLM_TEMPERATURE_RESEARCH,
+            provider=Config.SYN_LLM_PROVIDER,
+            base_url=Config.SYN_LLM_BASE_URL,
+            model=Config.SYN_LLM_MODEL,
+        )
 
         print("[research] mode initialized")
         print(f"[research] temperature={Config.LLM_TEMPERATURE_RESEARCH}")

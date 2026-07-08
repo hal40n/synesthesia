@@ -16,7 +16,13 @@ class LiveMode:
 
         # ---- init ----
         self.prompt = load_prompt(Config.PROMPT_LIVE)
-        self.client = LLMClient(self.prompt, temperature=Config.LLM_TEMPERATURE_LIVE)
+        self.client = LLMClient(
+            self.prompt,
+            temperature=Config.LLM_TEMPERATURE_LIVE,
+            provider=Config.SYN_LLM_PROVIDER,
+            base_url=Config.SYN_LLM_BASE_URL,
+            model=Config.SYN_LLM_MODEL,
+        )
 
         print("[live] mode initialized")
         print(f"[live] temperature={Config.LLM_TEMPERATURE_LIVE}")
