@@ -1,9 +1,9 @@
 import threading
-import time
 
 from syn.config import Config
 from syn.core.prompt_loader import load_prompt
 from syn.input.factory import create_input_source
+from syn.input.static import StaticInputSource
 from syn.llm.client import LLMClient
 from syn.log.live import LiveLogger
 from syn.render.renderer import Renderer
@@ -42,10 +42,6 @@ class LiveMode:
         holder = ColorStateHolder(INITIAL_STATE)
         stop = threading.Event()
 
-        # First interpretation runs synchronously so the window opens
-        # with a meaningful color; failures keep the neutral one.
-        self._interpret_once(session, client, source, holder)
-
         thread = threading.Thread(
             target=self._interpret_loop,
             args=(session, client, source, holder, stop),
@@ -69,8 +65,21 @@ class LiveMode:
 
     def _interpret_loop(self, session, client, source, holder, stop):
         interval = Config.SYN_AUDIO_WINDOW_SECONDS
-        while not stop.wait(interval):
-            self._interpret_once(session, client, source, holder)
+        is_static = isinstance(source, StaticInputSource)
+
+        # An audio window is only meaningful once the ring buffer holds
+        # one full window of sound; a static observation is ready now.
+        if not is_static and stop.wait(interval):
+            return
+
+        while not stop.is_set():
+            interpreted = self._interpret_once(session, client, source, holder)
+            if interpreted and is_static:
+                # A fixed observation cannot change: one interpretation
+                # defines this session's color.
+                return
+            if stop.wait(interval):
+                return
 
     def _interpret_once(self, session, client, source, holder) -> bool:
         try:
@@ -83,13 +92,18 @@ class LiveMode:
 
         holder.set(color_from_output(output))
 
-        logger = LiveLogger()
-        logger.write({
-            "timestamp": logger.timestamp,
-            "mode": "live",
-            "session": session.session_name,
-            "key": session.key,
-            "temperature": Config.LLM_TEMPERATURE_LIVE,
-            "llm_output": output.__dict__,
-        })
+        try:
+            logger = LiveLogger()
+            logger.write({
+                "timestamp": logger.timestamp,
+                "mode": "live",
+                "session": session.session_name,
+                "key": session.key,
+                "temperature": Config.LLM_TEMPERATURE_LIVE,
+                "llm_output": output.__dict__,
+            })
+        except Exception as e:
+            # The color is already on screen; a lost trace must not
+            # kill the interpretation thread.
+            print(f"[live] trace logging failed: {e}")
         return True
