@@ -34,5 +34,8 @@ class Config:
     SYN_LLM_PROVIDER = _required_env("SYN_LLM_PROVIDER")
     SYN_LLM_MODEL = _required_env("SYN_LLM_MODEL")
     SYN_LLM_BASE_URL = _required_env("SYN_LLM_BASE_URL")
+    # "static" preserves the historical fixed-triad behavior; set
+    # SYN_INPUT_SOURCE=audio to observe a capture device instead.
+    SYN_INPUT_SOURCE = os.getenv("SYN_INPUT_SOURCE", "static")
     LLM_TEMPERATURE_RESEARCH = _get_env_float("PROMPT_RESEARCH_TEMPERATURE")
     LLM_TEMPERATURE_LIVE = _get_env_float("PROMPT_LIVE_TEMPERATURE")        
