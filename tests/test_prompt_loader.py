@@ -4,8 +4,10 @@ from syn.core.prompt_loader import load_prompt
 
 
 def test_loads_existing_prompt():
+    # Prompt wording is authoritative and freely editable (/prompts):
+    # assert only that content is loaded, never pin its text.
     text = load_prompt("prompts/research.md")
-    assert "Research Mode" in text
+    assert text.strip()
 
 
 def test_leading_slash_is_stripped():

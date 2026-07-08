@@ -1,16 +1,24 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from syn.config import Config
+from syn.log.base import BaseLogger
 from syn.log.live import LiveLogger
 from syn.log.research import ResearchLogger
 
 
-def test_timestamp_keeps_legacy_utc_format():
-    """Timestamps are used as filenames: keep the naive-UTC isoformat shape."""
-    logger_ts = ResearchLogger.__new__(ResearchLogger)
-    super(ResearchLogger, logger_ts).__init__()
-    datetime.strptime(logger_ts.timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+class _TimestampOnlyLogger(BaseLogger):
+    def write(self, data: dict):
+        pass
+
+
+def test_timestamp_is_utc_in_legacy_format():
+    """Timestamps double as log filenames: keep the naive-UTC isoformat
+    shape, and make sure the value really is UTC, not local time."""
+    ts = _TimestampOnlyLogger().timestamp
+    parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%f")
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    assert abs((now_utc - parsed).total_seconds()) < 5
 
 
 def test_research_logger_writes_indented_json(tmp_path, monkeypatch):
