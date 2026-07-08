@@ -9,6 +9,14 @@ description = "syn - synesthesia engine"
 requires-python = ">=3.10"
 dependencies = [
     "python-dotenv",
+    "requests",
+    "python-osc",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
 ]
 
 [project.scripts]
