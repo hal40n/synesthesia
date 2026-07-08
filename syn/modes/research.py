@@ -1,7 +1,7 @@
 from syn.core.prompt_loader import load_prompt
 from syn.config import Config
+from syn.input.factory import create_input_source
 from syn.llm.client import LLMClient
-from syn.llm.schema import LLMInput
 from syn.log.research import ResearchLogger
 
 
@@ -27,15 +27,10 @@ class ResearchMode:
         print("[research] mode initialized")
         print(f"[research] temperature={Config.LLM_TEMPERATURE_RESEARCH}")
         print(f"[research] key={session.key}, seed={session.seed}")
+        print(f"[research] input source={Config.SYN_INPUT_SOURCE}")
 
-        # dummy input (unchanged)
-        llm_input = LLMInput(
-            key=session.key or "C major",
-            pitch_classes=["C", "E", "G"],
-            frequencies=[261.6, 329.6, 392.0],
-            dynamics="medium",
-            density="normal",
-        )
+        source = create_input_source(Config.SYN_INPUT_SOURCE, key=session.key)
+        llm_input = source.read()
 
         output = self.client.interpret(llm_input)
         print(f"[research] LLM output: {output}")

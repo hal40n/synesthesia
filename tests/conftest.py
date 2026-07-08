@@ -14,6 +14,7 @@ os.environ["SYN_LLM_MODEL"] = "env-model"
 os.environ["SYN_LLM_BASE_URL"] = "http://127.0.0.1:9999"
 os.environ["PROMPT_RESEARCH_TEMPERATURE"] = "0.0"
 os.environ["PROMPT_LIVE_TEMPERATURE"] = "0.7"
+os.environ["SYN_INPUT_SOURCE"] = "static"
 
 import pytest
 

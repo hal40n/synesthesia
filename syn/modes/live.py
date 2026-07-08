@@ -1,7 +1,7 @@
 from syn.core.prompt_loader import load_prompt
 from syn.config import Config
+from syn.input.factory import create_input_source
 from syn.llm.client import LLMClient
-from syn.llm.schema import LLMInput
 from syn.log.live import LiveLogger
 
 
@@ -27,14 +27,10 @@ class LiveMode:
         print("[live] mode initialized")
         print(f"[live] temperature={Config.LLM_TEMPERATURE_LIVE}")
         print(f"[live] key={session.key}, session={session.session_name}")
+        print(f"[live] input source={Config.SYN_INPUT_SOURCE}")
 
-        llm_input = LLMInput(
-            key=session.key or "C major",
-            pitch_classes=["C", "E", "G"],
-            frequencies=[261.6, 329.6, 392.0],
-            dynamics="medium",
-            density="normal",
-        )
+        source = create_input_source(Config.SYN_INPUT_SOURCE, key=session.key)
+        llm_input = source.read()
 
         output = self.client.interpret(llm_input)
         print(f"[live] LLM output: {output}")
