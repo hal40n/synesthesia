@@ -50,18 +50,35 @@ class TestResearchMode:
         assert data["temperature"] == Config.LLM_TEMPERATURE_RESEARCH
 
 
+class FakeRenderer:
+    """Stands in for the pygame window: pulls a few frames, then quits."""
+
+    def __init__(self, **kwargs):
+        pass
+
+    def run(self, next_state, max_frames=None):
+        for _ in range(3):
+            next_state()
+
+
 class TestLiveMode:
     def test_seed_option_is_rejected(self):
         session = Session(mode="live", seed=1)
         with pytest.raises(ValueError, match="--seed is not allowed"):
             session.start()
 
-    def test_start_writes_trace_log_without_input(self, live_log_dir, valid_output):
+    def test_start_renders_and_writes_trace_log(self, live_log_dir, valid_output):
         session = Session(mode="live", key="E minor", session_name="night-01")
-        with patch("syn.modes.live.LLMClient") as MockClient:
+        with (
+            patch("syn.modes.live.LLMClient") as MockClient,
+            patch("syn.modes.live.Renderer", FakeRenderer),
+        ):
             MockClient.return_value.interpret.return_value = valid_output
             session.start()
 
+        # the first interpretation runs synchronously before the window
+        # opens; the background thread waits a full interval, so exactly
+        # one trace exists after an immediate quit
         files = list(live_log_dir.glob("*.json"))
         assert len(files) == 1
         data = json.loads(files[0].read_text(encoding="utf-8"))
@@ -70,3 +87,14 @@ class TestLiveMode:
         # live logs are traces: they intentionally omit the full input
         assert "llm_input" not in data
         assert "seed" not in data
+
+    def test_interpretation_failure_keeps_session_alive(self, live_log_dir):
+        session = Session(mode="live", key="E minor")
+        with (
+            patch("syn.modes.live.LLMClient") as MockClient,
+            patch("syn.modes.live.Renderer", FakeRenderer),
+        ):
+            MockClient.return_value.interpret.side_effect = RuntimeError("LLM down")
+            session.start()  # must not raise: presence over crash
+
+        assert list(live_log_dir.glob("*.json")) == []
