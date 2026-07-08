@@ -6,15 +6,6 @@ from syn.log.research import ResearchLogger
 
 
 class ResearchMode:
-    def __init__(self):
-        self.prompt = None
-        self.client = LLMClient(
-            prompt=self.prompt,
-            temperature=Config.LLM_TEMPERATURE_RESEARCH,
-        )
-
-        print(f"[research] temperature={Config.LLM_TEMPERATURE_RESEARCH}")
-
     def start(self, session):
         # ---- option validation ----
         if session.session_name is not None:
@@ -28,6 +19,7 @@ class ResearchMode:
         self.client = LLMClient(self.prompt, temperature=Config.LLM_TEMPERATURE_RESEARCH)
 
         print("[research] mode initialized")
+        print(f"[research] temperature={Config.LLM_TEMPERATURE_RESEARCH}")
         print(f"[research] key={session.key}, seed={session.seed}")
 
         # dummy input (unchanged)

@@ -6,15 +6,6 @@ from syn.log.live import LiveLogger
 
 
 class LiveMode:
-    def __init__(self):
-        self.prompt = None
-        self.client = LLMClient(
-            prompt=self.prompt,
-            temperature=Config.LLM_TEMPERATURE_LIVE,
-        )
-
-        print(f"[live] temperature={Config.LLM_TEMPERATURE_LIVE}")
-
     def start(self, session):
         # ---- option validation ----
         if session.seed is not None:
@@ -28,6 +19,7 @@ class LiveMode:
         self.client = LLMClient(self.prompt, temperature=Config.LLM_TEMPERATURE_LIVE)
 
         print("[live] mode initialized")
+        print(f"[live] temperature={Config.LLM_TEMPERATURE_LIVE}")
         print(f"[live] key={session.key}, session={session.session_name}")
 
         llm_input = LLMInput(
