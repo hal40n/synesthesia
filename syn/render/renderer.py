@@ -64,6 +64,10 @@ class Renderer:
             frames = 0
             running = True
             while running and (max_frames is None or frames < max_frames):
+                # real elapsed time, capped so a stall never teleports
+                # particles; tick() also enforces the fps ceiling
+                dt = min(clock.tick(self.fps) / 1000.0, 0.1)
+
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         running = False
@@ -71,11 +75,9 @@ class Renderer:
                         running = False
 
                 state = next_state()
-                dt = 1.0 / self.fps
                 self._spawn(particles, state, rng)
                 self._draw(screen, particles, state, dt)
                 pygame.display.flip()
-                clock.tick(self.fps)
                 frames += 1
         finally:
             pygame.quit()
