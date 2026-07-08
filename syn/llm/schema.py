@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from typing import List, Literal
 
 Dynamics = Literal["soft", "medium", "loud"]
