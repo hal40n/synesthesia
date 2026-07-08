@@ -16,6 +16,10 @@ os.environ["PROMPT_RESEARCH_TEMPERATURE"] = "0.0"
 os.environ["PROMPT_LIVE_TEMPERATURE"] = "0.7"
 os.environ["SYN_INPUT_SOURCE"] = "static"
 
+# pygame must never open a real window during tests
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["SDL_AUDIODRIVER"] = "dummy"
+
 import pytest
 
 from syn.llm.schema import LLMOutput
