@@ -1,35 +1,36 @@
-from syn.llm.schema import LLMInput, LLMOutput, validate_output
-import os
-import requests
 import json
 
+import requests
+
+from syn.config import Config
+from syn.llm.schema import LLMInput, LLMOutput, validate_output
+
+MAX_ATTEMPTS = 2
+
+
 class LLMClient:
-    
+
     def __init__(self, prompt: str, temperature: float = 0.0):
         self.prompt = prompt
         self.temperature = temperature
-        self.provider = os.getenv("SYN_LLM_PROVIDER", "lmstudio")
-        self.base_url = os.getenv("SYN_LLM_BASE_URL", "http://127.0.0.1:1234")
-        self.model = os.getenv("SYN_LLM_MODEL", "allura-forge_llama-3.3-8b-instruct")
+        self.provider = Config.SYN_LLM_PROVIDER
+        self.base_url = Config.SYN_LLM_BASE_URL
+        self.model = Config.SYN_LLM_MODEL
 
     def interpret(self, llm_input: LLMInput) -> LLMOutput:
-        last_error = None
+        if self.provider == "lmstudio":
+            call = self._lmstudio_interpret
+        elif self.provider == "ollama":
+            call = self._ollama_interpret
+        else:
+            raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
 
-        for attempt in range(1, 2):
+        last_error = None
+        for _ in range(MAX_ATTEMPTS):
             try:
-                if self.provider == "lmstudio":
-                    return self._lmstudio_interpret(llm_input)
-                elif self.provider == "ollama":
-                    return self._ollama_interpret(llm_input)
-                else:
-                    raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
+                return call(llm_input)
             except Exception as e:
                 last_error = e
-                if attempt == 1:
-                    continue # retry
-                else:
-                    raise last_error
-
         raise last_error
 
     def _lmstudio_interpret(self, llm_input: LLMInput) -> LLMOutput:
