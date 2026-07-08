@@ -33,5 +33,6 @@ class Config:
     SYN_LOG_LIVE_DIR = _resolve_path("SYN_LOG_LIVE_DIR")
     SYN_LLM_PROVIDER = _required_env("SYN_LLM_PROVIDER")
     SYN_LLM_MODEL = _required_env("SYN_LLM_MODEL")
+    SYN_LLM_BASE_URL = _required_env("SYN_LLM_BASE_URL")
     LLM_TEMPERATURE_RESEARCH = _get_env_float("PROMPT_RESEARCH_TEMPERATURE")
     LLM_TEMPERATURE_LIVE = _get_env_float("PROMPT_LIVE_TEMPERATURE")        

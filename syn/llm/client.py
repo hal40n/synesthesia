@@ -1,36 +1,54 @@
-from syn.llm.schema import LLMInput, LLMOutput, validate_output
-import os
-import requests
 import json
 
+import requests
+
+from syn.llm.schema import LLMInput, LLMOutput, validate_output
+
+MAX_ATTEMPTS = 2
+
+PROVIDERS = ("lmstudio", "ollama")
+
+# Worth one retry: network hiccups and malformed LLM output (stochastic
+# at temperature > 0). HTTP status errors and response-shape errors are
+# deterministic — retrying them only doubles the wait.
+RETRYABLE_ERRORS = (requests.ConnectionError, requests.Timeout, ValueError)
+
+
 class LLMClient:
-    
-    def __init__(self, prompt: str, temperature: float = 0.0):
+
+    def __init__(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        *,
+        provider: str,
+        base_url: str,
+        model: str,
+    ):
+        if provider not in PROVIDERS:
+            raise ValueError(f"Unsupported LLM provider: {provider}")
         self.prompt = prompt
         self.temperature = temperature
-        self.provider = os.getenv("SYN_LLM_PROVIDER", "lmstudio")
-        self.base_url = os.getenv("SYN_LLM_BASE_URL", "http://127.0.0.1:1234")
-        self.model = os.getenv("SYN_LLM_MODEL", "allura-forge_llama-3.3-8b-instruct")
+        self.provider = provider
+        self.base_url = base_url
+        self.model = model
 
     def interpret(self, llm_input: LLMInput) -> LLMOutput:
+        if self.provider == "lmstudio":
+            call = self._lmstudio_interpret
+        else:
+            call = self._ollama_interpret
+
+        first_error = None
         last_error = None
-
-        for attempt in range(1, 2):
+        for _ in range(MAX_ATTEMPTS):
             try:
-                if self.provider == "lmstudio":
-                    return self._lmstudio_interpret(llm_input)
-                elif self.provider == "ollama":
-                    return self._ollama_interpret(llm_input)
-                else:
-                    raise RuntimeError(f"Unsupported LLM provider: {self.provider}")
-            except Exception as e:
+                return call(llm_input)
+            except RETRYABLE_ERRORS as e:
+                if first_error is None:
+                    first_error = e
                 last_error = e
-                if attempt == 1:
-                    continue # retry
-                else:
-                    raise last_error
-
-        raise last_error
+        raise last_error from first_error
 
     def _lmstudio_interpret(self, llm_input: LLMInput) -> LLMOutput:
         url = f"{self.base_url}/v1/chat/completions"
