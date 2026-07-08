@@ -5,3 +5,5 @@ syn/modes/__pycache__
 *.egg-info
 .env
 logs/
+.coverage
+.pytest_cache/
